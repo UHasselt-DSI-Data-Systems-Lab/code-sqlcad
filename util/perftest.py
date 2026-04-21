@@ -63,8 +63,7 @@ def measure_performance(test, N=5, force=False):
         if (df["x"] == x).any():
             continue
 
-        print(f"Starting iterations for x={x}")
-
+        print(f"Starting iterations for x={x}", end="")
 
         new_rows = []
         for n in range(0, N):
@@ -73,6 +72,9 @@ def measure_performance(test, N=5, force=False):
             test.run(x)
             stop = time.perf_counter()
             new_rows.append({"N": n, "x": x, "time": stop - start})
+            print(".", end="")
+
+        print("")
 
         df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
         df.to_csv(csv_name, index=False)

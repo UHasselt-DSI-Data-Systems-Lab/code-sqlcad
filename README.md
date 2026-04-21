@@ -8,9 +8,15 @@ series of Jupyter notebooks. Each notebook is self-documenting.
 
 The first few notebooks deal with implementing CAD in SQL:
 
-- [1.1 Basic CAD](./1.1cad_basic.ipynb): Basic example that implements CAD using
+- [1.1 Basic CAD](./1.1.cad_basic.ipynb): Basic example that implements CAD using
   a CTE. Mostly an introduction to our approach to CAD.
-- [_todo_](./README.md): TODO
+- [1.2 Column-based CAD](./1.2.column_based_approach.ipynb): An alternative approach where
+  coefficients are represented as columns instead of rows.
+- [1.3 Intermediate tables](./1.2.column_based_intermediate.ipynb): A
+  column-based approach that stores intermediate results in separate table,
+  stepping away from the recursive query.
+- [1.4 Performance comparison](./1.4.performance.ipynb): Compares the
+  performance of the discussed approaches.
 
 The next notebooks use the SQL approach to solve LRA formulas:
 
@@ -36,3 +42,7 @@ Once installed, run `uv sync` to fetch the required Python libraries.
 
 After installing all dependencies, run `uv run jupyter notebook` to start a
 Jupyter server. Or, run the notebooks using your favorite environment.
+
+TODO: rerun perftests again for uniform results. Either filter on true values
+for the other tests as well, or return all results in the intermediate approach
+as well (the tests filtered on truth value).
