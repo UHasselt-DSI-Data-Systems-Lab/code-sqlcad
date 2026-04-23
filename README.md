@@ -18,13 +18,17 @@ The first few notebooks deal with implementing CAD in SQL:
 - [1.4 Performance comparison](./1.4.performance.ipynb): Compares the
   performance of the discussed approaches.
 
-The next notebooks use the SQL approach to solve LRA formulas:
+The next notebooks use the CAD to solve LRA formulas in SQL:
 
 - [2.1 Quantifiers](./2.1.quantifiers.ipynb): introductory quantifier
   elimination in SQL.
-- [_todo_](./README.md): TODO
+- [2.2.general_approach](./2.2.general_approach.ipynb): general framework that
+  accepts SMT-LIB formulas.
 
-If you are only interested in the main result, skip to [_todo_](./README.md).
+If you are only interested in the main result, optionally skim [1.1 Basic
+CAD](./1.1.cad_basic.ipynb) to see how we implemented CAD in SQL and skip to
+[2.2.general_approach](./2.2.general_approach.ipynb) to see the general
+framework in action.
 
 ## Setup
 
