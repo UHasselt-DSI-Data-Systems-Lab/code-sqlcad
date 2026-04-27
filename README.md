@@ -48,7 +48,3 @@ Once installed, run `uv sync` to fetch the required Python libraries.
 
 After installing all dependencies, run `uv run jupyter notebook` to start a
 Jupyter server. Or, run the notebooks using your favorite environment.
-
-TODO: rerun perftests again for uniform results. Either filter on true values
-for the other tests as well, or return all results in the intermediate approach
-as well (the tests filtered on truth value).
