@@ -33,9 +33,9 @@ def _all_rows_present(df, N, x_labels):
     return missing_combinations.empty
 
 
-def measure_performance(test, N=5, force=False):
+def measure_performance(test, N=5, force=False, output_dir="timings"):
     name = test.name()
-    csv_name = f"timings/{name}.csv"
+    csv_name = f"{output_dir}/{name}.csv"
 
     if force and os.path.exists(csv_name):
         os.remove(csv_name)
