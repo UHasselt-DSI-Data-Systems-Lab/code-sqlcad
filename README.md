@@ -22,12 +22,14 @@ The next notebooks use the CAD to solve LRA formulas in SQL:
 
 - [2.1 Quantifiers](./2.1.quantifiers.ipynb): introductory quantifier
   elimination in SQL.
-- [2.2.general_approach](./2.2.general_approach.ipynb): general framework that
+- [2.2 General approach](./2.2.general_approach.ipynb): general framework that
   accepts SMT-LIB formulas.
+- [2.3 Verifying NNs](./2.3.nnv.ipynb): application to neural network
+  verification.
 
 If you are only interested in the main result, optionally skim [1.1 Basic
 CAD](./1.1.cad_basic.ipynb) to see how we implemented CAD in SQL and skip to
-[2.2.general_approach](./2.2.general_approach.ipynb) to see the general
+[2.2 General approach](./2.2.general_approach.ipynb) to see the general
 framework in action.
 
 ## Setup
