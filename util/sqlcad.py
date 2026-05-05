@@ -348,87 +348,91 @@ def compile_results_query(constraint_coefficients, formula):
 
     return query
 
-def compile_qe_query(formula):
+def compile_qe_query(formula, translation_mapping):
+    variables = f.get_variable_ordering_with_type(formula)
+    variables = list(enumerate([var_type for _, var_type in variables], start=1))
+    highest_dim = variables[-1][0]
+    quantified_vars = [(dim, var_type) for dim, var_type in variables]
+
+    if not quantified_vars:
+        query = f"""
+            SELECT
+                cell_id AS base_cell,
+                truth_value,
+                x{highest_dim}
+            FROM Result
+            JOIN Lift_Dimension{highest_dim} l ON l.id = cell_id
+        """
+        write_query("qe.sql", query)
+
+        return query
+
+    def go(vars):
+        dim,var_type = vars[0]
+        aggregation_function = "BOOL_AND" if var_type == "forall" else "BOOL_OR"
+        xs = ", ".join(f"MAX_BY(x{d}, r.truth_value) AS x{d}" for d in range(dim, highest_dim + 1))
+
+        if dim == highest_dim and dim == 1:
+            return f"""
+                SELECT
+                    0 AS base_cell,
+                    {aggregation_function}(r.truth_value) AS truth_value,
+                    MAX_BY(x1, r.truth_value) AS x1
+                FROM Result r
+                JOIN Lift_Dimension1 l1 ON l1.id = r.cell_id
+            """
+        if dim == highest_dim:
+            return f"""
+                SELECT
+                    l{dim}.base_cell,
+                    {aggregation_function}(r.truth_value) AS truth_value,
+                    {xs}
+                FROM Result r
+                JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.cell_id
+                GROUP BY l{dim}.base_cell
+            """
+        if dim == 1:
+            return f"""
+                SELECT
+                    0 AS base_cell,
+                    {aggregation_function}(r.truth_value) AS truth_value,
+                    {xs}
+                FROM (
+                    {go(vars[1:])}
+                ) r
+                JOIN Lift_Dimension1 l1 ON l1.id = r.base_cell
+
+            """
+
+        return f"""
+            SELECT
+                l{dim}.base_cell,
+                {aggregation_function}(r.truth_value) AS truth_value,
+                {xs}
+            FROM (
+                {go(vars[1:])}
+            ) r
+            JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.base_cell
+            GROUP BY l{dim}.base_cell
+        """
+
+    query = go(quantified_vars)
+
+    # Finally, wrap in a SAT/UNSAT result.
+    translation_mapping = {v: k for k, v in translation_mapping.items()}
+
+    def varname_for_dim(dim):
+        return translation_mapping[f"_x{dim}"]
+
+    xs = ", ".join(f"IF(truth_value, x{d}, NULL) AS '{varname_for_dim(d)}'" for d in range(1, highest_dim + 1))
+
+    query = f"""
+        SELECT
+            truth_value,
+            {xs}
+        FROM ({query})
     """
-SELECT BOOL_OR(truth_value) AS truth_value
-FROM (
-    SELECT l2.base_cell, BOOL_OR(r.truth_value) AS truth_value
-    FROM (
-        SELECT l3.base_cell, BOOL_OR(r.truth_value) AS truth_value
-        FROM Result r
-        JOIN Lift_Dimension3 l3 ON l3.id = r.cell_id
-        GROUP BY l3.base_cell
-    ) r
-    JOIN Lift_Dimension2 l2 ON l2.id = r.base_cell
-    GROUP BY l2.base_cell
-) r
-JOIN Lift_Dimension1 l1 ON l1.id = r.base_cell
-"""
 
-    def go(formula, depth):
-        inner_formula = None
-
-        match formula:
-            case f.Forall(formula=frmla):
-                aggregation_function = 'BOOL_AND'
-                inner_formula = frmla
-            case f.Exists(formula=frmla):
-                aggregation_function = 'BOOL_OR'
-                inner_formula = frmla
-            case _:
-                raise Exception("Unquantified formula; not implemented")
-
-        match inner_formula:
-            case f.Quantifier():
-                is_last_quantifier = False
-            case _:
-                is_last_quantifier = True
-
-        is_first_quantifier = depth == 0
-
-        indent = "  " * depth
-
-        if is_last_quantifier and is_first_quantifier:
-            # Only a single quantifier
-            return f"""
-    SELECT {aggregation_function}(truth_value) AS truth_value
-    FROM Result r
-            """
-        if is_last_quantifier:
-            dim = depth + 1
-
-            return f"""
-{indent}SELECT
-{indent}  l{dim}.base_cell,
-{indent}  {aggregation_function}(r.truth_value) AS truth_value
-{indent}FROM Result r
-{indent}JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.cell_id
-{indent}GROUP BY l{dim}.base_cell
-            """
-        elif is_first_quantifier:
-            return f"""
-{indent}SELECT {aggregation_function}(truth_value) AS truth_value
-{indent}FROM (
-{indent}  {go(formula.formula, depth + 1)}
-{indent}) r
-{indent}JOIN Lift_Dimension1 l1 ON l1.id = r.base_cell
-            """
-
-        else:
-            dim = depth + 1
-
-            return f"""
-{indent}SELECT
-{indent}  l{dim}.base_cell,
-{indent}  {aggregation_function}(r.truth_value) AS truth_value
-{indent}FROM (
-{indent}  {go(formula.formula, depth + 1)}
-{indent}) r
-{indent}JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.base_cell
-{indent}GROUP BY l{dim}.base_cell
-            """
-
-    query = go(formula, 0)
     write_query("qe.sql", query)
 
     return query
@@ -456,7 +460,8 @@ def evaluate_formula(con, formula, function_name_to_model_id_mapping=None):
         nn_geom_mapping[fname] = get_geometric_representation(con, model_id)
 
     formula = f.compile_nn_function_calls(formula, nn_geom_mapping)
-    formula = f.rename_vars(formula)
+    formula, translation_mapping = f.rename_vars(formula)
+    formula = f.prefix_existential_quantifiers(formula)
     formula = f.rewrite_implications(formula)
 
     constraint_coefficients = []
@@ -470,6 +475,6 @@ def evaluate_formula(con, formula, function_name_to_model_id_mapping=None):
     results_query = compile_results_query(constraint_coefficients, formula)
     con.sql(f"INSERT INTO Result(cell_id, truth_value) {results_query}")
 
-    qe_query = compile_qe_query(formula)
+    qe_query = compile_qe_query(formula, translation_mapping)
 
     return con.sql(qe_query)

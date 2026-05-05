@@ -204,17 +204,18 @@ def rewrite_implications(formula):
 
 
 def collect_vars(formula: Formula | Term):
-    variables = set([])
+    # Dict keeps insertion order; set does not. We want to keep the same
+    # ordering as given in the formula, for readability.
+    variables = {}
 
     def f(formula):
         match formula:
             case Var(name=name):
-                variables.add(name)
+                variables[name] = name
 
     formula.map(f)
 
-    # Map works in leaf-first order, so reverse the result.
-    return list(reversed(list(variables)))
+    return variables.keys()
 
 def collect_constraints(formula: Formula | Term):
     constraints = {}
@@ -235,24 +236,41 @@ def collect_quantified_vars(formula: Formula):
 
     def f (formula):
         match formula:
-            case Forall(variable=variable) | Exists(variable=variable):
-                variables.append(variable)
+            case Forall(variable=variable):
+                variables.append((variable, "forall"))
+            case Exists(variable=variable):
+                variables.append((variable, "exists"))
 
     formula.map(f)
 
     # Map works in leaf-first order, so reverse the result.
     return list(reversed(variables))
 
-def get_variable_ordening(formula: Formula | Term):
+def get_variable_ordering(formula: Formula | Term):
+    return [name for name,_ in get_variable_ordering_with_type(formula)]
+
+
+def get_variable_ordering_with_type(formula: Formula | Term):
     all_vars = collect_vars(formula)
     quantified_vars = collect_quantified_vars(formula)
-    free_vars = [var for var in all_vars if var not in quantified_vars]
+    quantified_var_names = [name for name,type in quantified_vars]
+    free_vars = [(var,"free") for var in all_vars if var not in quantified_var_names]
 
     return free_vars + quantified_vars
 
 
+def prefix_existential_quantifiers(formula: Formula | Term) -> Formula:
+    variable_ordering = get_variable_ordering_with_type(formula)
+    free_vars = [varname for varname,vartype in variable_ordering if vartype == 'free']
+
+    for varname in reversed(free_vars):
+        formula = Exists(varname, formula)
+
+    return formula
+
+
 def rename_vars(formula: Formula):
-    ordered_vars = get_variable_ordening(formula)
+    ordered_vars = get_variable_ordering(formula)
 
     translation_mapping = {}
     for i, var in enumerate(ordered_vars, start=1):
@@ -269,7 +287,7 @@ def rename_vars(formula: Formula):
             case _:
                 return formula
 
-    return formula.map(translate)
+    return formula.map(translate), translation_mapping
 
 def coefficients(ineq):
     """
