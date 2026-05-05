@@ -47,9 +47,26 @@ new_sample_points AS (
         MAX(x{dimension}) + 1
     FROM dim_n_plus_1_eval
     GROUP BY base_cell_id
+),
+-- If we have a single interval for a cell (-inf to +inf), we need to add 0 as a
+-- sample point in a separate step, since the min/max from the query above
+-- returns zero rows.
+new_sample_points_with_single_intervals AS (
+    SELECT base_cell_id, x{dimension}
+    FROM new_sample_points
+
+    UNION
+
+    SELECT {lift_n_min_1}.id, 0 AS x{dimension}
+    FROM {lift_n_min_1}
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM new_sample_points p
+        WHERE p.base_cell_id = {lift_n_min_1}.id
+    )
 )
 SELECT
     ROW_NUMBER() OVER (ORDER BY base_cell_id, x{dimension}) AS id,
     base_cell_id,
     x{dimension}
-FROM new_sample_points
+FROM new_sample_points_with_single_intervals
