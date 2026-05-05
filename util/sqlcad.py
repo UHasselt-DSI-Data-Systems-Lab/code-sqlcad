@@ -424,7 +424,12 @@ def compile_qe_query(formula, translation_mapping):
     def varname_for_dim(dim):
         return translation_mapping[f"_x{dim}"]
 
-    xs = ", ".join(f"IF(truth_value, x{d}, NULL) AS '{varname_for_dim(d)}'" for d in range(1, highest_dim + 1))
+
+    xs = ", ".join(
+        f"IF(truth_value, x{d}, NULL) AS '{varname_for_dim(d)}'"
+        for d in range(1, highest_dim + 1)
+        if not varname_for_dim(d).startswith("_function_output")
+    )
 
     query = f"""
         SELECT
