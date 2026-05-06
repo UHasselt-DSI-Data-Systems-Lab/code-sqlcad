@@ -1,8 +1,10 @@
 # SQLCAD
 
-Code accompanying the paper [_todo: insert title and
-link_](https://documentserver.uhasselt.be/). The research is presented as a
-series of Jupyter notebooks. Each notebook is self-documenting.
+Code accompanying the paper [A Database-Inspired Approach to Deciding Linear
+Real
+Arithmetic](https://documentserver.uhasselt.be/simple-search?query=A+Database-Inspired+Approach+to+Deciding+Linear+Real+Arithmetic&location=global).
+The research is presented as a series of Jupyter notebooks. Each notebook is
+self-documenting.
 
 ## Project Structure
 

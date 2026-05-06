@@ -34,7 +34,6 @@ highest_dimension_normalized_constraints AS (
 ),
 highest_dimension_intersects AS (
     SELECT
-        -- TODO: can also use array instead?
         (nc1.constraint_id || 'x' || nc2.constraint_id) AS constraint_id,
         nc1.dimension,
         nc2.value - nc1.value AS value,
@@ -71,7 +70,6 @@ highest_dimension_projections AS (
         AND hdi2.value <> 0
     )
 ),
--- TODO: check this for correctness againts the hardcoded version.
 recursive_projections AS (
     SELECT
         p.constraint_id,
@@ -166,7 +164,6 @@ recursive_projections AS (
 -- Now our projection is ready to calculate R1 (= x) values, and take sample
 -- points from the intervals they define.
 x_values AS (
-    -- TODO: this can also be a group by I think.
     SELECT DISTINCT -coeff0.value / coeff1.value AS x_value
     FROM recursive_projections coeff0
     JOIN recursive_projections coeff1
