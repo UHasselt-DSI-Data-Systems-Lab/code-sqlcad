@@ -186,11 +186,6 @@ class Implies(Formula):
         return f(Implies(self.antecedent.map(f), self.conclusion.map(f)))
 
 
-def assert_prenex_normalform(formula):
-    # TODO
-    pass
-
-
 def rewrite_implications(formula):
 
     def map_fn(formula):
