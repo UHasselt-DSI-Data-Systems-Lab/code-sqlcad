@@ -14,7 +14,7 @@ The first few notebooks deal with implementing CAD in SQL:
   a CTE. Mostly an introduction to our approach to CAD.
 - [1.2 Column-based CAD](./1.2.column_based_approach.ipynb): An alternative approach where
   coefficients are represented as columns instead of rows.
-- [1.3 Intermediate tables](./1.2.column_based_intermediate.ipynb): A
+- [1.3 Intermediate tables](./1.3.column_based_intermediate.ipynb): A
   column-based approach that stores intermediate results in separate table,
   stepping away from the recursive query.
 - [1.4 Performance comparison](./1.4.performance.ipynb): Compares the
