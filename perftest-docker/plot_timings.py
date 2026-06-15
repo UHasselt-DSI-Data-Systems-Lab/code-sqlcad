@@ -58,7 +58,7 @@ points2 = (
     .encode(
         x=alt.X(
             "x:Q",
-            title="Number of constants",
+            title="Number of dimensions",
             axis=alt.Axis(values=list(range(3, 11, 1)), format="d"),
             scale=alt.Scale(domain=(3,10))),
         y=alt.Y("mean(time):Q", title="Time (s)", axis=alt.Axis(values=list(range(0, 31, 5)))),
@@ -82,7 +82,7 @@ chart2 = (
     .properties(width=600, height=400)
     .configure_axis(grid=False)
     .configure_view(strokeOpacity=0)
-    .configure_legend(orient="top")
+    .configure_legend(orient="none", legendX=40, legendY=20)
 )
 
 chart2.save("method_comparison.png", scale_factor=2)
