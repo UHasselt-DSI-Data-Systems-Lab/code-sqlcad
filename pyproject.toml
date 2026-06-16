@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "altair[all]>=6.2.1",
     "duckdb>=1.4.4",
     "ipykernel>=7.1.0",
     "ipympl>=0.10.0",
