@@ -1,19 +1,22 @@
 # Reproducibility
 
-We compare our SQL-based approach to 2 baselines:
+We compare our SQL-based CAD approach to 2 baselines:
 
 - QEPCAD: the standard CAD implementation (to compare against CAD)
 - Z3: an SMT solver (to compare against industry solvers)
+
+The SQLCAD code itself is also compared across the variants developed in the
+notebooks:
+
+- Row-based recursive
+- Row-based non-recursive
+- Column-based recursive
+- Column-based non-recursive
 
 All experiments run on the same test data, generated in
 [`experiments.py`](./experiments.py). Timing collection and CSV output are
 shared in [`perf.py`](./perf.py). Each baseline lives in its own folder with a
 Docker image and a `run.sh`.
-
-Only the `dense_constraints` experiment is implemented for now, in two
-scenarios: an always-satisfiable set (`dense_constraints`) and a mixed
-SAT/UNSAT set (`dense_constraints_mixed`). Each `run.sh` writes its timings to
-`<baseline>/timings/<scenario>.csv`.
 
 ## Usage
 
@@ -26,6 +29,13 @@ reproducibility/z3/run.sh
 ```
 
 Requires Docker to be installed.
+
+Each runner optionally takes one or more experiment groups (`dense`,
+`dimensions`) to run only a subset, e.g.:
+
+```sh
+reproducibility/sqlcad/run.sh dimensions
+```
 
 ## Plotting
 

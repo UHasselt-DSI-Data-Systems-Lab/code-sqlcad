@@ -2,4 +2,4 @@
 
 Baseline runner for our own SQL-based CAD implementation.
 
-Usage: `./run.sh`.
+Usage: `./run.sh [dense|dimensions ...]`.

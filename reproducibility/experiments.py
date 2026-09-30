@@ -10,11 +10,6 @@ REPETITIONS = 3
 DENSE_CONSTRAINTS_DIMENSIONS = 3
 DENSE_CONSTRAINTS_BOUND = 100
 
-# TODO: few tests right now; adapt + rerun on simlab machine.
-
-# TODO: allow it to
-# be shorter for some experiments, e.g. qepcad should abort earlier
-DENSE_CONSTRAINTS_SIZES = [10, 20, 30, 40, 50]
 
 def dense_constraints(
     num_constraints,
@@ -66,9 +61,29 @@ def dense_constraints_mixed(
     ]
 
 
-# Scenario name -> generator. The runners iterate over this mapping so the
-# scenario set stays in sync with the plotting code.
-DENSE_SCENARIOS = {
+# Scenario name -> constraint generator, used by the dense runners.
+DENSE_GENERATORS = {
     "dense_constraints": dense_constraints,
     "dense_constraints_mixed": dense_constraints_mixed,
 }
+
+
+# TODO: test bigger sets once everything is set up.
+EXPERIMENTS = {
+    "dense_constraints": {"sizes": [10, 20, 30, 40]},
+    "dense_constraints_mixed": {"sizes": [10, 20, 30, 40]},
+    "dimensions": {"sizes": [3, 4, 5]},
+}
+
+SIZE_OVERRIDES = {
+    # Stop earlier for things that blow up faster.
+    ("dimensions", "basic_recursive"): [3, 4],
+    ("dimensions", "column_based"): [3, 4],
+    # Example for the full-scale runs:
+    # ("dense_constraints", "qepcad"): [10, 20, 30, 40, 50],
+}
+
+
+def sizes(scenario, variant):
+    """Size list for ``scenario``, overridable per ``variant``."""
+    return SIZE_OVERRIDES.get((scenario, variant), EXPERIMENTS[scenario]["sizes"])
