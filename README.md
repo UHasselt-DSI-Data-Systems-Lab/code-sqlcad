@@ -50,3 +50,8 @@ Once installed, run `uv sync` to fetch the required Python libraries.
 
 After installing all dependencies, run `uv run jupyter notebook` to start a
 Jupyter server. Or, run the notebooks using your favorite environment.
+
+## Reproducibility
+
+To reproduce the performance graphs from the accompanying, consulte
+`reproducibility/README.md`.
