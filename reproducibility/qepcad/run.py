@@ -82,10 +82,6 @@ def qepcad_decision(script):
     return result
 
 
-# ---------------------------------------------------------------------------
-# dense constraints
-# ---------------------------------------------------------------------------
-
 def build_dense_input(constraints):
     clauses = []
     for _, a0, a1, a2 in constraints:
@@ -99,10 +95,6 @@ def build_dense_input(constraints):
 def solve_dense(constraints):
     return qepcad_decision(build_dense_input(constraints))
 
-
-# ---------------------------------------------------------------------------
-# dimensions (ReLU instance)
-# ---------------------------------------------------------------------------
 
 def build_dimensions_input(dimensions):
     """Build the ReLU instance with ``dimensions`` inputs for QEPCAD."""
@@ -126,8 +118,6 @@ def build_dimensions_input(dimensions):
 def solve_dimensions(dimensions):
     return qepcad_decision(build_dimensions_input(dimensions))
 
-
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
