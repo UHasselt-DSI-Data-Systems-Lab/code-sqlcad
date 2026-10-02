@@ -94,17 +94,18 @@ def plot(experiment, spec):
         scale=alt.Scale(zero=False),
     )
     y = alt.Y("mean:Q", title="Time (s)")
-    color = alt.Color("series:N", title="Method")
+    domain = summary["series"].drop_duplicates().tolist()
+    color = alt.Color(
+        "series:N", title="Method", scale=alt.Scale(domain=domain)
+    )
+    shape = alt.Shape(
+        "series:N", title="Method", scale=alt.Scale(domain=domain)
+    )
 
     points = (
         alt.Chart(summary)
         .mark_point(size=70, filled=True)
-        .encode(
-            x=x,
-            y=y,
-            color=color,
-            shape=alt.Shape("series:N", legend=None),
-        )
+        .encode(x=x, y=y, color=color, shape=shape)
     )
     lines = (
         alt.Chart(summary)
