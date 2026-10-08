@@ -1,7 +1,4 @@
-WITH max_id AS (
-    SELECT MAX(id) AS id
-    FROM {proj_n_plus_1}
-),
+WITH
 dim_n_intersects AS (
     SELECT
         {intersect_calculation_coeffs}
@@ -10,7 +7,6 @@ dim_n_intersects AS (
         ON a.id < b.id
         AND a.constraint_dimension = {dimension_to_project}
         AND b.constraint_dimension = {dimension_to_project}
-    CROSS JOIN max_id
 ),
 dim_n_intersects_with_cd AS (
     SELECT
@@ -21,25 +17,23 @@ dim_n_intersects_with_cd AS (
 ),
 with_previous AS (
     SELECT
-        -- Ensure we have unique IDs by starting to count from the maximum ID of the
-        -- last table.
-        --max_id.id + (ROW_NUMBER() OVER ()) AS id,
         constraint_dimension,
-        {all_coeffs},
+        {all_coeffs}
     FROM dim_n_intersects_with_cd
-    CROSS JOIN max_id
 
-    UNION
+    UNION ALL
+
     -- Union the original constraints of a lower dimension.
     SELECT
-        --id,
         constraint_dimension,
-        {all_coeffs},
+        {all_coeffs}
     FROM LinearConstraint
     WHERE constraint_dimension < {dimension_to_project}
 ),
 unique_constraints AS (
-    SELECT constraint_dimension, {all_coeffs}
+    SELECT
+        constraint_dimension,
+        {normalized_coeffs}
     FROM with_previous
     GROUP BY ALL -- Remove duplicates
 )

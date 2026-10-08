@@ -40,6 +40,13 @@ def project_n(n, max_dim):
 
     all_coeffs = ", ".join(f"a{i}" for i in range(0, n))
 
+    normalized_coeffs = ""
+    for i in range(0, n):
+        branches = " ".join(f"WHEN {d} THEN a{i}/a{d}" for d in range(1, n))
+        normalized_coeffs += f"CASE constraint_dimension {branches} ELSE a{i} END AS a{i}"
+        if i < n - 1:
+            normalized_coeffs += ",\n"
+
     proj_n_plus_1=f"Projection_Dimension{n+1}" if n < max_dim else "LinearConstraint"
 
     query = project_template.format(
@@ -48,7 +55,8 @@ def project_n(n, max_dim):
         intersect_calculation_coeffs=intersect_calculation_coeffs,
         constraint_dimension_calc=constraint_dimension_calc,
         empty_intersect_filter=empty_intersect_filter,
-        all_coeffs=all_coeffs
+        all_coeffs=all_coeffs,
+        normalized_coeffs=normalized_coeffs
     )
 
     write_query(f"project_{n}.sql", query)
@@ -66,44 +74,25 @@ def calculate_x_values(con, max_dims):
     con.sql("SELECT * FROM Lift_Dimension1 ORDER BY x1")
 
 def lift_n(n, max_dimension):
-    lift_eval = f"(p.a0 / -p.a{n})\n"
+    eval_expr = f"(p.a0 / -p.a{n})"
     for i in range(1, n):
-        lift_eval += f"  + (p.a{i} * l{i}.x{i} / -p.a{n})\n"
-    lift_eval += f"AS x{n},\n"
-
-    self_join_conditions = [f"a.x{i} = b.x{i}" for i in range(1, n)]
-    self_join_conditions = " AND ".join(self_join_conditions)
+        eval_expr += f" + (p.a{i} * l{i}.x{i} / -p.a{n})"
 
     proj_n_plus_1=f"Projection_Dimension{n+1}"
     if n >= max_dimension:
         proj_n_plus_1="LinearConstraint"
 
     lift_joins = ""
-    if i > 1:
-        for i in range(2, n):
-            lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
+    for i in range(2, n):
+        lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
 
-    # TODO: some of these vars are no longer used after the rework.
     query = lift_template.format(
         lift_n_min_1=f"Lift_Dimension{n-1}",
         lift_n_min_1_alias=f"l{n-1}",
         proj_n_plus_1=proj_n_plus_1,
         dimension=n,
-        lxvals_upto_nmin1=", ".join(f"l{i}.x{i}" for i in range(1, n)),
-        lift_eval=lift_eval,
-        lift_joins=lift_joins,
-        l_x_vals=", ".join(f"l{i}.x{i}" for i in range(1, n)),
-        p_a_vals=", ".join(f"p.a{i}" for i in range(0, n+1)),
-        new_x_vals=", ".join(f"x{i}" for i in range(1, n+1)),
-        new_x_val=f"x{n}",
-        xvals_upto_nmin1=", ".join(f"x{i}" for i in range(1, n)),
-        a_x_vals_upto_nmin1=", ".join(f"a.x{i}" for i in range(1, n)),
-        a_x_vals_upto_n=", ".join(f"a.x{i}" for i in range(1, n + 1)),
-        halfway_interval=f"(a.x{n} + MIN(b.x{n})) / 2 AS x{n}",
-        self_join_conditions=self_join_conditions,
-        gt_condition=f"b.x{n} > a.x{n}",
-        interval_mininf=f"MIN(x{n}) - 1",
-        interval_plusinf=f"MAX(x{n}) + 1"
+        eval_expr=eval_expr,
+        lift_joins=lift_joins
     )
 
     write_query(f"lift_{n}.sql", query)
@@ -148,7 +137,7 @@ def generate_db_for_constraints(con, constraints):
 
         proj_create_table = f"""
             CREATE TABLE {proj_table_name}(
-            id INTEGER PRIMARY KEY,
+            id INTEGER,
             constraint_dimension INTEGER,
         """
         for dimension in range (0, i):
@@ -159,7 +148,7 @@ def generate_db_for_constraints(con, constraints):
 
         lift_create_table = f"""
             CREATE TABLE {lift_table_name}(
-                id INTEGER PRIMARY KEY,
+                id INTEGER,
                 {'base_cell INTEGER,' if i > 1 else ''}
                 x{i} DOUBLE
             )
