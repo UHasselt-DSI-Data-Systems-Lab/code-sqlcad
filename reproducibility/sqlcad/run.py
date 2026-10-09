@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import threading
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -30,14 +31,47 @@ DIMENSION_VARIANTS = [
     column_intermediate,
 ]
 
+SQLCAD_TIMEOUT = 300
+
+
+class QueryTimeout(Exception):
+    """Raised when a solve exceeds its wall-clock budget."""
+
+
+def timed(con, solve):
+    """Wrap ``solve`` so each call is cancelled after SQLCAD_TIMEOUT seconds."""
+    def run(n):
+        stop = threading.Event()
+
+        def watch():
+            if stop.wait(SQLCAD_TIMEOUT):
+                return
+            while not stop.is_set():
+                con.interrupt()
+                stop.wait(0.5)
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
+        try:
+            return solve(n)
+        except db.InterruptException as exc:
+            raise QueryTimeout(
+                f"solve exceeded {SQLCAD_TIMEOUT}s and was interrupted"
+            ) from exc
+        finally:
+            stop.set()
+
+    return run
+
 
 def run_dense(con):
     for scenario, generate in experiments.DENSE_GENERATORS.items():
+        def solve(n, generate=generate):
+            return DENSE_VARIANT.solve_constraints(con, generate(n))
+
         perf.measure(
             scenario,
-            lambda n, generate=generate: DENSE_VARIANT.solve_constraints(
-                con, generate(n)
-            ),
+            timed(con, solve),
             output_dir=OUTPUT_DIR,
             sizes=experiments.sizes(scenario, DENSE_VARIANT.NAME),
             repetitions=experiments.REPETITIONS,
@@ -46,9 +80,12 @@ def run_dense(con):
 
 def run_dimensions(con):
     for variant in DIMENSION_VARIANTS:
+        def solve(k, variant=variant):
+            return variant.solve(con, k)
+
         perf.measure(
             variant.NAME,
-            lambda k, variant=variant: variant.solve(con, k),
+            timed(con, solve),
             output_dir=OUTPUT_DIR,
             sizes=experiments.sizes("dimensions", variant.NAME),
             repetitions=experiments.REPETITIONS,

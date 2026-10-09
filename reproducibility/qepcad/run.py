@@ -21,6 +21,11 @@ QEPCAD_MEMORY = 10_000_000
 QEPCAD_TIMEOUT = 300
 
 
+def is_timeout(result):
+    """Treat a timeout as a limit: stop increasing the problem size."""
+    return result == "timeout"
+
+
 def format_sum(terms):
     """Render a signed sum the way QEPCAD's parser expects.
 
@@ -138,6 +143,7 @@ def main():
                 output_dir=OUTPUT_DIR,
                 sizes=experiments.sizes(scenario, "qepcad"),
                 repetitions=experiments.REPETITIONS,
+                stop_on=is_timeout,
             )
 
     if "dimensions" in groups:
@@ -147,6 +153,7 @@ def main():
             output_dir=OUTPUT_DIR,
             sizes=experiments.sizes("dimensions", "qepcad"),
             repetitions=experiments.REPETITIONS,
+            stop_on=is_timeout,
         )
 
 

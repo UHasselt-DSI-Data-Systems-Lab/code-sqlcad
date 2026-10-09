@@ -68,20 +68,16 @@ DENSE_GENERATORS = {
 }
 
 
-# TODO: test bigger sets once everything is set up.
+DENSE_SIZES = list(range(10, 151, 10))
+DIMENSION_SIZES = list(range(3, 11))
+
 EXPERIMENTS = {
-    "dense_constraints": {"sizes": [10, 20, 30, 40]},
-    "dense_constraints_mixed": {"sizes": [10, 20, 30, 40]},
-    "dimensions": {"sizes": [3, 4, 5]},
+    "dense_constraints": {"sizes": DENSE_SIZES},
+    "dense_constraints_mixed": {"sizes": DENSE_SIZES},
+    "dimensions": {"sizes": DIMENSION_SIZES},
 }
 
-SIZE_OVERRIDES = {
-    # Stop earlier for things that blow up faster.
-    ("dimensions", "basic_recursive"): [3, 4],
-    ("dimensions", "column_based"): [3, 4],
-    # Example for the full-scale runs:
-    # ("dense_constraints", "qepcad"): [10, 20, 30, 40, 50],
-}
+SIZE_OVERRIDES = {}
 
 
 def sizes(scenario, variant):
