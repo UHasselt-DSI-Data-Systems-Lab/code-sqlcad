@@ -26,7 +26,8 @@ def solve_dense(constraints):
 
 
 def solve_dimensions(dimensions):
-    xs = [z3.Real(f"x{i}") for i in range(1, dimensions + 1)]
+    num_inputs = dimensions - 1
+    xs = [z3.Real(f"x{i}") for i in range(1, num_inputs + 1)]
     u = z3.Real("u")
     summation = z3.Sum(xs)
 
@@ -37,9 +38,9 @@ def solve_dimensions(dimensions):
             z3.And(summation >= 0, u == summation),
         )
     )
-    solver.add(u > dimensions)
+    solver.add(u > num_inputs)
     for x in xs:
-        solver.add(x < dimensions)
+        solver.add(x < num_inputs)
 
     return _check(solver)
 

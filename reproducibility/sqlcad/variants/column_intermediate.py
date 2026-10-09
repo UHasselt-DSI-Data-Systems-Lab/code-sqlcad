@@ -300,5 +300,6 @@ def solve_constraints(con, constraints):
 
 
 def solve(con, dimensions):
-    """Decide the ReLU instance with ``dimensions`` inputs (see experiments.py)."""
-    return solve_constraints(con, generate_constraints_for_dimensions(dimensions))
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    return solve_constraints(con, generate_constraints_for_dimensions(num_inputs))

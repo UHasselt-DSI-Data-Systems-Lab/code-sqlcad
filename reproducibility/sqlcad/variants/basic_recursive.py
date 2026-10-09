@@ -43,8 +43,8 @@ def generate_scenario_with_dimensions(con, dimensions):
 
     ∃x1,...,xk . (F(x1, ..., xk)) > k ∧ (x1 < k) ∧ ... ∧ (xk < k)
 
-    Where F() is the ReLU of the summation, and k = dimensions - 1 (because the
-    result of F() is given a new variable and thus a new dimension).
+    Where F() is the ReLU of the summation and the argument is the number of
+    inputs ``k`` (the output variable ``u`` adds one more dimension).
     """
     k = dimensions
     summation = ["+".join([f"x{i}" for i in range(1, dimensions + 1)]), 0] + [1 for _ in range(1, dimensions + 1)]
@@ -79,7 +79,8 @@ def generate_query_with_dimensions(dimensions):
 
 
 def solve(con, dimensions):
-    """Decide the ReLU instance with ``dimensions`` inputs (see experiments.py)."""
-    generate_scenario_with_dimensions(con, dimensions)
-    query = generate_query_with_dimensions(dimensions)
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_scenario_with_dimensions(con, num_inputs)
+    query = generate_query_with_dimensions(num_inputs)
     return "sat" if con.execute(query).fetchall() else "unsat"

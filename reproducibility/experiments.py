@@ -69,6 +69,7 @@ DENSE_GENERATORS = {
 
 
 DENSE_SIZES = list(range(10, 151, 10))
+# Total CAD dimensions, i.e. inputs plus the output variable.
 DIMENSION_SIZES = list(range(3, 11))
 
 EXPERIMENTS = {

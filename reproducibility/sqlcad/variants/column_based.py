@@ -198,7 +198,8 @@ def generate_query_for_dimensions(dimensions):
     )
 
 def solve(con, dimensions):
-    """Decide the ReLU instance with ``dimensions`` inputs (see experiments.py)."""
-    generate_db_for_dimensions(con, dimensions)
-    query = generate_query_for_dimensions(dimensions)
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_db_for_dimensions(con, num_inputs)
+    query = generate_query_for_dimensions(num_inputs)
     return "sat" if con.execute(query).fetchall() else "unsat"

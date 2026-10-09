@@ -279,7 +279,8 @@ def generate_nonrecursive_query_with_dimensions(dimensions):
 
 
 def solve(con, dimensions):
-    """Decide the ReLU instance with ``dimensions`` inputs (see experiments.py)."""
-    generate_scenario_with_dimensions(con, dimensions)
-    query = generate_nonrecursive_query_with_dimensions(dimensions)
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_scenario_with_dimensions(con, num_inputs)
+    query = generate_nonrecursive_query_with_dimensions(num_inputs)
     return "sat" if con.execute(query).fetchall() else "unsat"

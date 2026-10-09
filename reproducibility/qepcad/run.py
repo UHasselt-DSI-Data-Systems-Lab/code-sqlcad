@@ -101,9 +101,9 @@ def solve_dense(constraints):
     return qepcad_decision(build_dense_input(constraints))
 
 
-def build_dimensions_input(dimensions):
-    """Build the ReLU instance with ``dimensions`` inputs for QEPCAD."""
-    k = dimensions
+def build_dimensions_input(num_inputs):
+    """Build the ReLU instance with ``num_inputs`` inputs for QEPCAD."""
+    k = num_inputs
     xs = [f"x{i}" for i in range(1, k + 1)]
     summation = format_sum([(1, x) for x in xs])
 
@@ -121,7 +121,7 @@ def build_dimensions_input(dimensions):
 
 
 def solve_dimensions(dimensions):
-    return qepcad_decision(build_dimensions_input(dimensions))
+    return qepcad_decision(build_dimensions_input(dimensions - 1))
 
 
 def main():
