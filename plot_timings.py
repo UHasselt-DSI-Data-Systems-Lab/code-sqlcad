@@ -39,6 +39,7 @@ chart.save("column_based_dense_constraints.png", scale_factor=2)
 
 files = {
     "Row-based recursive": "simlab-timings/basic_recursive.csv",
+    "Row-based non-recursive": "simlab-timings/basic_nonrecursive.csv",
     "Col-based non-recursive": "simlab-timings/column_based_intermediates.csv",
     "Col-based recursive": "simlab-timings/column_based.csv",
 }
@@ -54,15 +55,23 @@ df2 = pd.concat(parts, ignore_index=True)
 
 points2 = (
     alt.Chart(df2)
-    .mark_circle(size=60)
+    .mark_point(size=60, filled=True)
     .encode(
         x=alt.X(
             "x:Q",
             title="Number of dimensions",
             axis=alt.Axis(values=list(range(3, 11, 1)), format="d"),
-            scale=alt.Scale(domain=(3,10))),
-        y=alt.Y("mean(time):Q", title="Time (s)", axis=alt.Axis(values=list(range(0, 31, 5)))),
+            scale=alt.Scale(domain=(3, 10))
+        ),
+        y=alt.Y(
+            "mean(time):Q",
+            title="Time (s)",
+            axis=alt.Axis(values=list(range(0, 31, 5))),
+            # Highlight: Added the domain scale limit here
+            scale=alt.Scale(domain=(0, 30))
+        ),
         color=alt.Color("method:N", title="Method"),
+        shape=alt.Shape("method:N", title="Method")
     )
 )
 
@@ -71,8 +80,11 @@ regression2 = (
     .mark_line(strokeWidth=1.5, strokeDash=[6, 2])
     .encode(
         x=alt.X("x:Q"),
-        y=alt.Y("time:Q"),
-        color=alt.Color("method:N"),
+        y=alt.Y(
+            "time:Q",
+            scale=alt.Scale(domain=(0, 30))
+        ),
+        color=alt.Color("method:N", legend=None),
     )
     .transform_regression("x", "time", method="exp", groupby=["method"])
 )

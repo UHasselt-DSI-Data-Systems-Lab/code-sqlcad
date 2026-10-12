@@ -1,6 +1,4 @@
-import duckdb as db
-
-DBNAME = "dbs/cad_basic_nonrecursive.db"
+NAME = "basic_nonrecursive"
 
 
 def create_db_with_constraints(con, constraints):
@@ -280,23 +278,9 @@ def generate_nonrecursive_query_with_dimensions(dimensions):
     return "\n".join(lines)
 
 
-import util.perftest as perftest
-
-
-def perftest_until_n(n: int, force=True, output_dir="timings"):
-    with db.connect(DBNAME) as con:
-        class BasicNonRecursivePerfTest(perftest.PerfTest):
-            def name(self):
-                return "basic_nonrecursive"
-
-            def setup_run(self, dimensions):
-                generate_scenario_with_dimensions(con, dimensions - 1)
-
-            def run(self, dimensions):
-                query = generate_nonrecursive_query_with_dimensions(dimensions - 1)
-                con.execute(query)
-
-            def x_labels(self):
-                return range(2, n + 1)
-
-        perftest.measure_performance(BasicNonRecursivePerfTest(), force=force, output_dir=output_dir)
+def solve(con, dimensions):
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_scenario_with_dimensions(con, num_inputs)
+    query = generate_nonrecursive_query_with_dimensions(num_inputs)
+    return "sat" if con.execute(query).fetchall() else "unsat"

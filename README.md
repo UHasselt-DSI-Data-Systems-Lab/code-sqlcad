@@ -1,8 +1,6 @@
 # SQLCAD
 
-Code accompanying the paper [A Database-Inspired Approach to Deciding Linear
-Real
-Arithmetic](https://documentserver.uhasselt.be/simple-search?query=A+Database-Inspired+Approach+to+Deciding+Linear+Real+Arithmetic&location=global).
+Code accompanying the paper [Deciding Quantified Linear Real Arithmetic in SQL](https://documentserver.uhasselt.be/global-search?query=Deciding+Quantified+Linear+Real+Arithmetic+in+SQL).
 The research is presented as a series of Jupyter notebooks. Each notebook is
 self-documenting.
 
@@ -50,3 +48,8 @@ Once installed, run `uv sync` to fetch the required Python libraries.
 
 After installing all dependencies, run `uv run jupyter notebook` to start a
 Jupyter server. Or, run the notebooks using your favorite environment.
+
+## Reproducibility
+
+To reproduce the performance graphs from the accompanying, consult
+`reproducibility/README.md`.

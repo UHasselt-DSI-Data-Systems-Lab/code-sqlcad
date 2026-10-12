@@ -40,6 +40,13 @@ def project_n(n, max_dim):
 
     all_coeffs = ", ".join(f"a{i}" for i in range(0, n))
 
+    normalized_coeffs = ""
+    for i in range(0, n):
+        branches = " ".join(f"WHEN {d} THEN a{i}/a{d}" for d in range(1, n))
+        normalized_coeffs += f"CASE constraint_dimension {branches} ELSE a{i} END AS a{i}"
+        if i < n - 1:
+            normalized_coeffs += ",\n"
+
     proj_n_plus_1=f"Projection_Dimension{n+1}" if n < max_dim else "LinearConstraint"
 
     query = project_template.format(
@@ -48,7 +55,8 @@ def project_n(n, max_dim):
         intersect_calculation_coeffs=intersect_calculation_coeffs,
         constraint_dimension_calc=constraint_dimension_calc,
         empty_intersect_filter=empty_intersect_filter,
-        all_coeffs=all_coeffs
+        all_coeffs=all_coeffs,
+        normalized_coeffs=normalized_coeffs
     )
 
     write_query(f"project_{n}.sql", query)
@@ -66,44 +74,25 @@ def calculate_x_values(con, max_dims):
     con.sql("SELECT * FROM Lift_Dimension1 ORDER BY x1")
 
 def lift_n(n, max_dimension):
-    lift_eval = f"(p.a0 / -p.a{n})\n"
+    eval_expr = f"(p.a0 / -p.a{n})"
     for i in range(1, n):
-        lift_eval += f"  + (p.a{i} * l{i}.x{i} / -p.a{n})\n"
-    lift_eval += f"AS x{n},\n"
-
-    self_join_conditions = [f"a.x{i} = b.x{i}" for i in range(1, n)]
-    self_join_conditions = " AND ".join(self_join_conditions)
+        eval_expr += f" + (p.a{i} * l{i}.x{i} / -p.a{n})"
 
     proj_n_plus_1=f"Projection_Dimension{n+1}"
     if n >= max_dimension:
         proj_n_plus_1="LinearConstraint"
 
     lift_joins = ""
-    if i > 1:
-        for i in range(2, n):
-            lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
+    for i in range(2, n):
+        lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
 
-    # TODO: some of these vars are no longer used after the rework.
     query = lift_template.format(
         lift_n_min_1=f"Lift_Dimension{n-1}",
         lift_n_min_1_alias=f"l{n-1}",
         proj_n_plus_1=proj_n_plus_1,
         dimension=n,
-        lxvals_upto_nmin1=", ".join(f"l{i}.x{i}" for i in range(1, n)),
-        lift_eval=lift_eval,
-        lift_joins=lift_joins,
-        l_x_vals=", ".join(f"l{i}.x{i}" for i in range(1, n)),
-        p_a_vals=", ".join(f"p.a{i}" for i in range(0, n+1)),
-        new_x_vals=", ".join(f"x{i}" for i in range(1, n+1)),
-        new_x_val=f"x{n}",
-        xvals_upto_nmin1=", ".join(f"x{i}" for i in range(1, n)),
-        a_x_vals_upto_nmin1=", ".join(f"a.x{i}" for i in range(1, n)),
-        a_x_vals_upto_n=", ".join(f"a.x{i}" for i in range(1, n + 1)),
-        halfway_interval=f"(a.x{n} + MIN(b.x{n})) / 2 AS x{n}",
-        self_join_conditions=self_join_conditions,
-        gt_condition=f"b.x{n} > a.x{n}",
-        interval_mininf=f"MIN(x{n}) - 1",
-        interval_plusinf=f"MAX(x{n}) + 1"
+        eval_expr=eval_expr,
+        lift_joins=lift_joins
     )
 
     write_query(f"lift_{n}.sql", query)
@@ -148,7 +137,7 @@ def generate_db_for_constraints(con, constraints):
 
         proj_create_table = f"""
             CREATE TABLE {proj_table_name}(
-            id INTEGER PRIMARY KEY,
+            id INTEGER,
             constraint_dimension INTEGER,
         """
         for dimension in range (0, i):
@@ -159,7 +148,7 @@ def generate_db_for_constraints(con, constraints):
 
         lift_create_table = f"""
             CREATE TABLE {lift_table_name}(
-                id INTEGER PRIMARY KEY,
+                id INTEGER,
                 {'base_cell INTEGER,' if i > 1 else ''}
                 x{i} DOUBLE
             )
@@ -348,94 +337,74 @@ def compile_results_query(constraint_coefficients, formula):
 
     return query
 
-def compile_qe_query(formula, translation_mapping):
+def compile_qe_query(formula, translation_mapping, num_free_vars=0):
     variables = f.get_variable_ordering_with_type(formula)
-    variables = list(enumerate([var_type for _, var_type in variables], start=1))
-    highest_dim = variables[-1][0]
-    quantified_vars = [(dim, var_type) for dim, var_type in variables]
+    var_types = [var_type for _, var_type in variables]
+    highest_dim = len(var_types)
 
-    if not quantified_vars:
-        query = f"""
-            SELECT
-                cell_id AS base_cell,
-                truth_value,
-                x{highest_dim}
-            FROM Result
-            JOIN Lift_Dimension{highest_dim} l ON l.id = cell_id
-        """
+    if highest_dim == 0:
+        query = "SELECT truth_value FROM Result"
         write_query("qe.sql", query)
 
         return query
 
-    def go(vars):
-        dim,var_type = vars[0]
-        aggregation_function = "BOOL_AND" if var_type == "forall" else "BOOL_OR"
-        xs = ", ".join(f"MAX_BY(x{d}, r.truth_value) AS x{d}" for d in range(dim, highest_dim + 1))
+    def truth_at(dim, base_cell):
+        if dim > highest_dim:
+            return f"EXISTS (SELECT 1 FROM Result r WHERE r.cell_id = {base_cell} AND r.truth_value)"
 
-        if dim == highest_dim and dim == 1:
-            return f"""
-                SELECT
-                    0 AS base_cell,
-                    {aggregation_function}(r.truth_value) AS truth_value,
-                    MAX_BY(x1, r.truth_value) AS x1
-                FROM Result r
-                JOIN Lift_Dimension1 l1 ON l1.id = r.cell_id
-            """
         if dim == highest_dim:
-            return f"""
-                SELECT
-                    l{dim}.base_cell,
-                    {aggregation_function}(r.truth_value) AS truth_value,
-                    {xs}
-                FROM Result r
-                JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.cell_id
-                GROUP BY l{dim}.base_cell
-            """
-        if dim == 1:
-            return f"""
-                SELECT
-                    0 AS base_cell,
-                    {aggregation_function}(r.truth_value) AS truth_value,
-                    {xs}
-                FROM (
-                    {go(vars[1:])}
-                ) r
-                JOIN Lift_Dimension1 l1 ON l1.id = r.base_cell
+            source = f"Result r JOIN Lift_Dimension{dim} c{dim} ON c{dim}.id = r.cell_id"
+            inner = "r.truth_value"
+        else:
+            source = f"Lift_Dimension{dim} c{dim}"
+            inner = truth_at(dim + 1, f"c{dim}.id")
 
-            """
+        conditions = []
+        if dim > 1:
+            conditions.append(f"c{dim}.base_cell = {base_cell}")
 
-        return f"""
-            SELECT
-                l{dim}.base_cell,
-                {aggregation_function}(r.truth_value) AS truth_value,
-                {xs}
-            FROM (
-                {go(vars[1:])}
-            ) r
-            JOIN Lift_Dimension{dim} l{dim} ON l{dim}.id = r.base_cell
-            GROUP BY l{dim}.base_cell
-        """
+        if var_types[dim - 1] == "forall":
+            conditions.append(f"NOT ({inner})")
+            return f"NOT EXISTS (SELECT 1 FROM {source} WHERE {' AND '.join(conditions)})"
 
-    query = go(quantified_vars)
+        conditions.append(f"({inner})")
+        return f"EXISTS (SELECT 1 FROM {source} WHERE {' AND '.join(conditions)})"
 
-    # Finally, wrap in a SAT/UNSAT result.
-    translation_mapping = {v: k for k, v in translation_mapping.items()}
+    if num_free_vars == 0:
+        query = f"SELECT {truth_at(1, '0')} AS truth_value"
+        write_query("qe.sql", query)
 
-    def varname_for_dim(dim):
-        return translation_mapping[f"_x{dim}"]
+        return query
 
+    # Return the first satisfying assignment for the free variables by selecting
+    # a witness chain of cells for them.
+    free_dims = list(range(1, num_free_vars + 1))
+    renaming = {v: k for k, v in translation_mapping.items()}
+    free_names = [renaming[f"_x{d}"] for d in free_dims]
 
-    xs = ", ".join(
-        f"IF(truth_value, x{d}, NULL) AS '{varname_for_dim(d)}'"
-        for d in range(1, highest_dim + 1)
-        if not varname_for_dim(d).startswith("_function_output")
+    witness_columns = ", ".join(f"c{d}.x{d} AS v{d}" for d in free_dims)
+    chain = "FROM Lift_Dimension1 c1"
+    for d in free_dims[1:]:
+        chain += f"\n                JOIN Lift_Dimension{d} c{d} ON c{d}.base_cell = c{d - 1}.id"
+
+    predicate = truth_at(num_free_vars + 1, f"c{num_free_vars}.id")
+
+    assigned = ", ".join(
+        f"(SELECT v{d} FROM witness) AS '{free_names[d - 1]}'"
+        for d in free_dims
     )
 
     query = f"""
+        WITH witness AS MATERIALIZED (
+            SELECT
+                {witness_columns}
+            {chain}
+            WHERE {predicate}
+            LIMIT 1
+        )
         SELECT
-            truth_value,
-            {xs}
-        FROM ({query})
+            EXISTS (SELECT 1 FROM witness) AS truth_value,
+            {assigned}
     """
 
     write_query("qe.sql", query)
@@ -466,6 +435,12 @@ def evaluate_formula(con, formula, function_name_to_model_id_mapping=None):
 
     formula = f.compile_nn_function_calls(formula, nn_geom_mapping)
     formula, translation_mapping = f.rename_vars(formula)
+
+    # Free variables become the outermost existential quantifiers. Track how
+    # many there are so we can return an assignment for them.
+    variable_ordering = f.get_variable_ordering_with_type(formula)
+    num_free_vars = sum(1 for _, var_type in variable_ordering if var_type == "free")
+
     formula = f.prefix_existential_quantifiers(formula)
     formula = f.rewrite_implications(formula)
 
@@ -480,6 +455,6 @@ def evaluate_formula(con, formula, function_name_to_model_id_mapping=None):
     results_query = compile_results_query(constraint_coefficients, formula)
     con.sql(f"INSERT INTO Result(cell_id, truth_value) {results_query}")
 
-    qe_query = compile_qe_query(formula, translation_mapping)
+    qe_query = compile_qe_query(formula, translation_mapping, num_free_vars)
 
     return con.sql(qe_query)

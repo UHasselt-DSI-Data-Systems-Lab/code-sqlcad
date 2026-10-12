@@ -1,6 +1,9 @@
-import duckdb as db
+from pathlib import Path
 
-DBNAME = "dbs/cad_basic.db"
+NAME = "basic_recursive"
+
+QUERIES_DIR = Path(__file__).resolve().parent.parent / "queries/basic"
+
 
 def create_db_with_constraints(con, constraints):
     con.sql("DROP TABLE IF EXISTS LinearConstraint")
@@ -40,8 +43,8 @@ def generate_scenario_with_dimensions(con, dimensions):
 
     ∃x1,...,xk . (F(x1, ..., xk)) > k ∧ (x1 < k) ∧ ... ∧ (xk < k)
 
-    Where F() is the ReLU of the summation, and k = dimensions - 1 (because the
-    result of F() is given a new variable and thus a new dimension).
+    Where F() is the ReLU of the summation and the argument is the number of
+    inputs ``k`` (the output variable ``u`` adds one more dimension).
     """
     k = dimensions
     summation = ["+".join([f"x{i}" for i in range(1, dimensions + 1)]), 0] + [1 for _ in range(1, dimensions + 1)]
@@ -63,7 +66,7 @@ def generate_scenario_with_dimensions(con, dimensions):
 def generate_query_with_dimensions(dimensions):
     k = dimensions
 
-    with open('queries/basic/recursive_template.sql') as file:
+    with open(QUERIES_DIR / 'recursive_template.sql') as file:
         query_template = file.read()
 
     fol_parts = [f"SELECT input_id FROM results WHERE description = 'u-{k}' AND result > 0"]
@@ -75,31 +78,9 @@ def generate_query_with_dimensions(dimensions):
     return query_template.format(sat_input_ids=fol_part)
 
 
-import util.perftest as perftest
-
-def perftest_until_n(n: int, force=True, output_dir="timings"):
-    with db.connect(DBNAME) as con:
-        class BasicPerfTest(perftest.PerfTest):
-            def name(self):
-                return "basic_recursive"
-
-            def setup_run(self, dimensions):
-                # Note that we do `dimension - 1`, because our generator function is
-                # named a bit unfortunate. `dimensions` are the number of arguments
-                # to the function F we are testing, so including an output variable
-                # we have an extra dimension.
-                generate_scenario_with_dimensions(con, dimensions - 1)
-
-            def run(self, dimensions):
-                query = generate_query_with_dimensions(dimensions - 1)
-                results = con.execute(query)
-
-            def x_labels(self):
-                return range(2, n+1)
-
-        perftest.measure_performance(BasicPerfTest(), force=force, output_dir=output_dir)
-
-
-# We see some very pessimistic scaling here. But, this approach is a first step.
-# In later notebooks, we will explore some optimizations and things look better
-# --- though we can't escape the exponential scaling.
+def solve(con, dimensions):
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_scenario_with_dimensions(con, num_inputs)
+    query = generate_query_with_dimensions(num_inputs)
+    return "sat" if con.execute(query).fetchall() else "unsat"

@@ -1,7 +1,10 @@
-import duckdb as db
 import copy
+from pathlib import Path
 
-DBNAME = "dbs/cad_columns.db"
+NAME = "column_based"
+
+QUERIES_DIR = Path(__file__).resolve().parent.parent / "queries/column-based"
+
 
 def generate_db_for_dimensions(con, dimensions):
     create_table_sql = """
@@ -58,7 +61,7 @@ def generate_db_for_dimensions(con, dimensions):
         con.execute(insert_query, [id] + constraint)
 
 def generate_query_for_dimensions(dimensions):
-    with open('queries/column-based/template.sql') as file:
+    with open(QUERIES_DIR / 'template.sql') as file:
         template = file.read()
 
     all_coeff_columns = ", ".join(f"a{i}" for i in range(0, dimensions + 2))
@@ -194,24 +197,9 @@ def generate_query_for_dimensions(dimensions):
         compiled_formula=compiled_formula
     )
 
-import util.perftest as perftest
-
-
-def perftest_until_n(n: int, force=True, output_dir="timings"):
-    with db.connect(DBNAME) as con:
-        class ColumnPerfTest(perftest.PerfTest):
-            def name(self):
-                return "column_based"
-
-            def setup_run(self, dimensions):
-                # See the note above.
-                generate_db_for_dimensions(con, dimensions - 1)
-
-            def run(self, dimensions):
-                query = generate_query_for_dimensions(dimensions - 1)
-                results = con.execute(query)
-
-            def x_labels(self):
-                return range(2, n+1)
-
-        perftest.measure_performance(ColumnPerfTest(), force=force, output_dir=output_dir)
+def solve(con, dimensions):
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    generate_db_for_dimensions(con, num_inputs)
+    query = generate_query_for_dimensions(num_inputs)
+    return "sat" if con.execute(query).fetchall() else "unsat"

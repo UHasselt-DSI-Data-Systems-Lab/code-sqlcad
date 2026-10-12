@@ -1,25 +1,29 @@
+import copy
 from pathlib import Path
-import duckdb as db
 
-DBNAME = "dbs/cad_columns_intermediate.db"
-DEBUG=True
-queries_dir = Path("queries/column-based-intermediate")
+NAME = "column_intermediate"
 
-with open(queries_dir / 'project.sql', 'r', encoding='utf-8') as file:
+QUERIES_DIR = Path(__file__).resolve().parent.parent / "queries/column-based-intermediate"
+
+DEBUG = False
+
+with open(QUERIES_DIR / 'project.sql', 'r', encoding='utf-8') as file:
     project_template = file.read()
 
-with open(queries_dir / 'x_values.sql', 'r', encoding='utf-8') as file:
+with open(QUERIES_DIR / 'x_values.sql', 'r', encoding='utf-8') as file:
     x_values_query = file.read()
 
-with open(queries_dir / 'lift.sql', 'r', encoding='utf-8') as file:
+with open(QUERIES_DIR / 'lift.sql', 'r', encoding='utf-8') as file:
     lift_template = file.read()
 
-with open(queries_dir / "results.sql", 'r', encoding='utf-8') as file:
+with open(QUERIES_DIR / "results.sql", 'r', encoding='utf-8') as file:
     results_template = file.read()
+
 
 def write_query(filename, query):
     if DEBUG:
-        with open(Path('build') / filename, 'w', encoding='utf-8') as f:
+        (Path(__file__).resolve().parent.parent / "build").mkdir(exist_ok=True)
+        with open(Path(__file__).resolve().parent.parent / "build" / filename, 'w', encoding='utf-8') as f:
             f.write(query)
 
 
@@ -38,6 +42,13 @@ def project_n(n, max_dim):
 
     all_coeffs = ", ".join(f"a{i}" for i in range(0, n))
 
+    normalized_coeffs = ""
+    for i in range(0, n):
+        branches = " ".join(f"WHEN {d} THEN a{i}/a{d}" for d in range(1, n))
+        normalized_coeffs += f"CASE constraint_dimension {branches} ELSE a{i} END AS a{i}"
+        if i < n - 1:
+            normalized_coeffs += ",\n"
+
     proj_n_plus_1=f"Projection_Dimension{n+1}" if n < max_dim else "LinearConstraint"
 
     return project_template.format(
@@ -46,7 +57,8 @@ def project_n(n, max_dim):
         intersect_calculation_coeffs=intersect_calculation_coeffs,
         constraint_dimension_calc=constraint_dimension_calc,
         empty_intersect_filter=empty_intersect_filter,
-        all_coeffs=all_coeffs
+        all_coeffs=all_coeffs,
+        normalized_coeffs=normalized_coeffs
     )
 
 def calculate_x_values(con, max_dims):
@@ -58,32 +70,25 @@ def calculate_x_values(con, max_dims):
     con.sql("SELECT * FROM Lift_Dimension1 ORDER BY x1")
 
 def lift_n(n, max_dimension):
-    lift_eval = f"(p.a0 / -p.a{n})\n"
+    eval_expr = f"(p.a0 / -p.a{n})"
     for i in range(1, n):
-        lift_eval += f"  + (p.a{i} * l{i}.x{i} / -p.a{n})\n"
-    lift_eval += f"AS x{n},\n"
-
-    self_join_conditions = [f"a.x{i} = b.x{i}" for i in range(1, n)]
-    self_join_conditions = " AND ".join(self_join_conditions)
+        eval_expr += f" + (p.a{i} * l{i}.x{i} / -p.a{n})"
 
     proj_n_plus_1=f"Projection_Dimension{n+1}"
     if n >= max_dimension:
         proj_n_plus_1="LinearConstraint"
 
     lift_joins = ""
-    if i > 1:
-        for i in range(2, n):
-            lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
+    for i in range(2, n):
+        lift_joins += f"JOIN Lift_Dimension{i} l{i} ON l{i}.base_cell = l{i-1}.id \n"
 
     query = lift_template.format(
+        lift_n_min_1=f"Lift_Dimension{n-1}",
         lift_n_min_1_alias=f"l{n-1}",
         proj_n_plus_1=proj_n_plus_1,
         dimension=n,
-        lxvals_upto_nmin1=", ".join(f"l{i}.x{i}" for i in range(1, n)),
-        lift_eval=lift_eval,
-        lift_joins=lift_joins,
-        p_a_vals=", ".join(f"p.a{i}" for i in range(0, n+1)),
-        self_join_conditions=self_join_conditions
+        eval_expr=eval_expr,
+        lift_joins=lift_joins
     )
 
     write_query(f"lift_{n}.sql", query)
@@ -124,7 +129,7 @@ def generate_db_for_constraints(con, constraints):
 
         proj_create_table = f"""
             CREATE TABLE {proj_table_name}(
-            id INTEGER PRIMARY KEY,
+            id INTEGER,
             constraint_dimension INTEGER,
         """
         for dimension in range (0, i):
@@ -135,7 +140,7 @@ def generate_db_for_constraints(con, constraints):
 
         lift_create_table = f"""
             CREATE TABLE {lift_table_name}(
-                id INTEGER PRIMARY KEY,
+                id INTEGER,
                 {'base_cell INTEGER,' if i > 1 else ''}
                 x{i} DOUBLE
             )
@@ -252,10 +257,6 @@ def create_cad(con, constraints):
     write_results(con, input_dimensions, constraints)
 
 
-import copy
-
-DEBUG=False
-
 def generate_constraints_for_dimensions(dimensions):
     constraints = []
 
@@ -289,24 +290,16 @@ def generate_constraints_for_dimensions(dimensions):
     return constraints
 
 
-import util.perftest as perftest
+def solve_constraints(con, constraints):
+    """Build the CAD for ``constraints`` and report whether it is satisfiable."""
+    create_cad(con, constraints)
+    satisfiable = con.execute(
+        "SELECT EXISTS(SELECT 1 FROM Result WHERE truth_value)"
+    ).fetchone()[0]
+    return "sat" if satisfiable else "unsat"
 
-def perftest_until_n(n: int, force=False, output_dir="timings"):
-    with db.connect(DBNAME) as con:
-        class ColumnBasedIntermediate(perftest.PerfTest):
-            def name(self):
-                return "column_based_intermediate"
 
-            def setup_run(self, dimensions):
-                constraints = generate_constraints_for_dimensions(dimensions - 1)
-                generate_db_for_constraints(con, constraints)
-
-            def run(self, dimensions):
-                constraints = generate_constraints_for_dimensions(dimensions - 1)
-                create_cad(con, constraints)
-                result = con.execute("SELECT * FROM Result WHERE truth_value")
-
-            def x_labels(self):
-                return range(2, n+1)
-
-        perftest.measure_performance(ColumnBasedIntermediate())
+def solve(con, dimensions):
+    """Decide the ReLU instance with ``dimensions`` CAD dimensions (see experiments.py)."""
+    num_inputs = dimensions - 1
+    return solve_constraints(con, generate_constraints_for_dimensions(num_inputs))
