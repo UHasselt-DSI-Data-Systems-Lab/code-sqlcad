@@ -9,10 +9,21 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 
+PRINT_PALETTE = [
+    "#0072B2",
+    "#D55E00",
+    "#009E73",
+    "#CC79A7",
+    "#E69F00",
+    "#56B4E9",
+    "#F0E442",
+    "#000000",
+]
+
 EXPERIMENTS = {
     "dense_constraints": {
-        "title": "dense_constraints (always SAT)",
         "x": "Number of constraints",
+        "legend_orient": "top-left",
         "series": [
             ("sqlcad", "SQLCAD", "sqlcad/timings/dense_constraints.csv"),
             ("qepcad", "QEPCAD", "qepcad/timings/dense_constraints.csv"),
@@ -20,7 +31,6 @@ EXPERIMENTS = {
         ],
     },
     "dense_constraints_mixed": {
-        "title": "dense_constraints (mixed SAT/UNSAT)",
         "x": "Number of constraints",
         "series": [
             ("sqlcad", "SQLCAD", "sqlcad/timings/dense_constraints_mixed.csv"),
@@ -29,8 +39,8 @@ EXPERIMENTS = {
         ],
     },
     "dimensions": {
-        "title": "CAD variant comparison",
         "x": "Number of dimensions",
+        "legend_orient": "top-left",
         "series": [
             (
                 "basic_recursive",
@@ -96,10 +106,13 @@ def plot(experiment, spec):
     y = alt.Y("mean:Q", title="Time (s)")
     domain = summary["series"].drop_duplicates().tolist()
     color = alt.Color(
-        "series:N", title="Method", scale=alt.Scale(domain=domain)
+        "series:N",
+        title="Method",
+        scale=alt.Scale(domain=domain, range=PRINT_PALETTE[: len(domain)]),
+        legend=alt.Legend(orient=spec.get("legend_orient", "right")),
     )
     shape = alt.Shape(
-        "series:N", title="Method", scale=alt.Scale(domain=domain)
+        "series:N", title="Method", scale=alt.Scale(domain=domain), legend=None
     )
 
     points = (
@@ -109,15 +122,20 @@ def plot(experiment, spec):
     )
     lines = (
         alt.Chart(summary)
+        .transform_regression("x", "mean", method="exp", groupby=["series"])
         .mark_line(strokeDash=[6, 2])
         .encode(x=x, y=y, color=color)
     )
 
     chart = (
         (points + lines)
-        .properties(width=600, height=400, title=spec["title"])
-        .configure_axis(grid=False)
-        .configure_view(strokeOpacity=0)
+        .properties(width=600, height=400)
+        .configure(
+            font="serif",
+            axis=alt.AxisConfig(labelFontSize=13, titleFontSize=14, grid=False),
+            legend=alt.LegendConfig(labelFontSize=13, titleFontSize=14),
+            view=alt.ViewConfig(strokeOpacity=0),
+        )
     )
 
     path = HERE / f"{experiment}.png"
