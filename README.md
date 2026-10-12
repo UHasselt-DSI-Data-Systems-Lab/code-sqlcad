@@ -51,5 +51,5 @@ Jupyter server. Or, run the notebooks using your favorite environment.
 
 ## Reproducibility
 
-To reproduce the performance graphs from the accompanying, consult
+To reproduce the performance graphs from the accompanying paper, consult
 `reproducibility/README.md`.
