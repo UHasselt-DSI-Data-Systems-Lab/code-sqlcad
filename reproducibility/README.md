@@ -13,11 +13,6 @@ notebooks:
 - Column-based recursive
 - Column-based non-recursive
 
-All experiments run on the same test data, generated in
-[`experiments.py`](./experiments.py). Timing collection and CSV output are
-shared in [`perf.py`](./perf.py). Each baseline lives in its own folder with a
-Docker image and a `run.sh`.
-
 ## Usage
 
 From the repository root:
@@ -29,13 +24,6 @@ reproducibility/z3/run.sh
 ```
 
 Requires Docker to be installed.
-
-Each runner optionally takes one or more experiment groups (`dense`,
-`dimensions`) to run only a subset, e.g.:
-
-```sh
-reproducibility/sqlcad/run.sh dimensions
-```
 
 ## Plotting
 
