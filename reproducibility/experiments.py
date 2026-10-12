@@ -5,7 +5,7 @@ Test setup for each experiment.
 import random
 
 SEED = 123
-REPETITIONS = 3
+REPETITIONS = 5
 
 DENSE_CONSTRAINTS_DIMENSIONS = 3
 DENSE_CONSTRAINTS_BOUND = 100
