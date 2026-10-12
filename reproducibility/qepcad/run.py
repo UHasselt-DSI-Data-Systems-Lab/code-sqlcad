@@ -17,7 +17,7 @@ OUTPUT_DIR = HERE / "timings"
 
 # +N<numcells>: SACLIB's garbage-collected space. The default is too small for
 # the signed instances and makes QEPCAD abort with "Too few cells reclaimed".
-QEPCAD_MEMORY = 10_000_000
+QEPCAD_MEMORY = 50_000_000
 QEPCAD_TIMEOUT = 300
 
 

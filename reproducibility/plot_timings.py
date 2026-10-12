@@ -104,7 +104,8 @@ def plot(experiment, spec):
         scale=alt.Scale(zero=False),
     )
     y = alt.Y("mean:Q", title="Time (s)")
-    domain = summary["series"].drop_duplicates().tolist()
+    present = set(summary["series"])
+    domain = [label for _, label, _ in spec["series"] if label in present]
     color = alt.Color(
         "series:N",
         title="Method",
