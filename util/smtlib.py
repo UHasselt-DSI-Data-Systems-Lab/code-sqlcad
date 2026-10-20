@@ -56,13 +56,19 @@ def smtlib_to_sqlcad(formula):
         def is_zero(f):
             return f.is_constant(value=0)
 
-        if len(args) != 2 or not (is_zero(args[0]) or is_zero(args[1])):
-            raise Exception(f"Only (in)equalities of the form a0+a1x1+... < 0 are allowed. Given: {formula}")
+        if len(args) != 2:
+            raise Exception(f"Only binary (in)equalities of the form a0+a1x1+... < 0 are allowed. Given: {formula}")
+
+        lhs = smtlib_to_sqlcad(args[0])
+        rhs = smtlib_to_sqlcad(args[1])
 
         if is_zero(args[1]):
-            return f.InEq(operator, smtlib_to_sqlcad(args[0]))
+            return f.InEq(operator, lhs)
 
-        return f.InEq(flipped_operator(operator), smtlib_to_sqlcad(args[1]))
+        if is_zero(args[0]):
+            return f.InEq(flipped_operator(operator), rhs)
+
+        return f.InEq(operator, f.Sub([lhs, rhs]))
     elif formula.is_plus():
         terms = [smtlib_to_sqlcad(term) for term in formula.args()]
 
