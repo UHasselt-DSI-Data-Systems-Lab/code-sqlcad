@@ -26,6 +26,8 @@ The next notebooks use the CAD to solve LRA formulas in SQL:
   accepts SMT-LIB formulas.
 - [2.3 Verifying NNs](./2.3.nnv.ipynb): application to neural network
   verification.
+- [2.4 Jena](./2.4.jena.ipynb): verifying a neural network trained on real-world
+  data.
 
 If you are only interested in the main result, optionally skim [1.1 Basic
 CAD](./1.1.cad_basic.ipynb) to see how we implemented CAD in SQL and skip to
